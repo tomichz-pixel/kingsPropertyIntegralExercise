@@ -16,7 +16,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // --- マスターデータ ---
+// マスターデータ（全30問：Lv.0 〜 Lv.5 各5問）
         const allProblems = [
             // --- Lv.0 導入・基本技術 ---
               {
@@ -267,7 +267,8 @@
             }
         ];
 
-        // ランダムシャッフル用ヘルパー
+
+// ランダムシャッフル用ヘルパー
         const shuffleArray = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
         // 各問題のカードコンポーネント
@@ -282,6 +283,7 @@
             }, [showKey, showAnswer]);
 
             const getBadgeColor = (level) => {
+                if (level.includes('0')) return 'bg-slate-200 text-slate-700'; // Lv.0 用のカラー
                 if (level.includes('1')) return 'bg-cyan-100 text-cyan-700';
                 if (level.includes('2')) return 'bg-green-100 text-green-700';
                 if (level.includes('3')) return 'bg-yellow-100 text-yellow-700';
@@ -352,11 +354,15 @@
         // メインアプリケーションコンポーネント
         function App() {
             const [isLoaded, setIsLoaded] = useState(false);
-            const [displayProblems, setDisplayProblems] = useState(allProblems);
+            const [displayProblems, setDisplayProblems] = useState([]);
             const [mode, setMode] = useState('all');
-            const [selectedLevel, setSelectedLevel] = useState(2);
+            const [selectedLevel, setSelectedLevel] = useState(0); // 初期値を Lv.0 に変更
             const [quizSession, setQuizSession] = useState(0);
             const [showTopButton, setShowTopButton] = useState(false);
+
+            useEffect(() => {
+                setDisplayProblems(allProblems);
+            }, []);
 
             useEffect(() => {
                 window.MathJax = {
@@ -414,14 +420,15 @@
 
             const generateRandomQuiz = () => {
                 const L = parseInt(selectedLevel);
-                const pools = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+                // 0から5までのプールを用意
+                const pools = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [] };
                 allProblems.forEach(p => {
                     const match = p.level.match(/^(\d)/);
-                    if (match) pools[match[1]].push(p);
+                    if (match && pools[match[1]] !== undefined) pools[match[1]].push(p);
                 });
 
                 const result = [];
-                if (L > 1) {
+                if (L > 0) { // 下限を0に変更
                     const lowerPool = shuffleArray(pools[L - 1]);
                     if (lowerPool.length > 0) result.push(lowerPool[0]);
                 }
@@ -459,7 +466,7 @@
 
             const renderProblems = () => {
                 if (mode === 'all') {
-                    const levels = [1, 2, 3, 4, 5];
+                    const levels = [0, 1, 2, 3, 4, 5]; // 0を追加
                     return levels.map(lv => {
                         const probs = displayProblems.filter(p => p.level.startsWith(String(lv)));
                         if (probs.length === 0) return null;
@@ -510,6 +517,7 @@
                                         onChange={(e) => setSelectedLevel(Number(e.target.value))} 
                                         className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5 font-medium"
                                     >
+                                        <option value={0}>Lv.0 導入・基本技術</option> {/* 選択肢を追加 */}
                                         <option value={1}>Lv.1 基礎・公式確認</option>
                                         <option value={2}>Lv.2 入試基礎レベル</option>
                                         <option value={3}>Lv.3 国公立標準レベル</option>
@@ -547,7 +555,7 @@
                                         各レベルへジャンプ
                                     </p>
                                     <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                                        {[1, 2, 3, 4, 5].map(lv => {
+                                        {[0, 1, 2, 3, 4, 5].map(lv => { // 0を追加
                                             const hasProbs = allProblems.some(p => p.level.startsWith(String(lv)));
                                             if (!hasProbs) return null;
                                             return (
