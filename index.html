@@ -1,12 +1,582 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kings Property Integral Exercise</title>
-</head>
-<body>
-    <h1>Kings Property Integral Exercise</h1>
-    <p>Welcome to the Kings Property Integral Exercise project.</p>
-</body>
-</html>
+import React, { useState, useEffect } from 'react';
+
+// マスターデータ
+const allProblems = [
+  // --- Lv.1 基礎・公式確認レベル ---
+  {
+    id: "L1_01",
+    level: "1_基礎レベル",
+    key: "基本変換：分母分子の相殺（三角関数）",
+    latexQ: "\\[ \\int_0^{\\frac{\\pi}{2}} \\frac{\\sin x}{\\sin x + \\cos x} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{4} \\]",
+    note: "【着眼点】：分母分子の強い対称性と区間 $[0, \\pi/2]$<br>【公式/方針】：$x = \\frac{\\pi}{2}-t$ と置換（King Property）して元の式 $I$ と足す。<br>【危険】：$2I$ の割り忘れ<br>⇒ $dx = -dt$、区間は $\\pi/2 \\to 0$ となり反転して戻す。<br>\\[ I = \\int_0^{\\pi/2} \\frac{\\cos t}{\\cos t + \\sin t} dt \\]<br>元の式と足すと、\\[ 2I = \\int_0^{\\pi/2} \\frac{\\sin x + \\cos x}{\\sin x + \\cos x} dx = \\int_0^{\\pi/2} 1 dx = \\frac{\\pi}{2} \\]<br>よって \\[ I = \\frac{\\pi}{4} \\]<br><b>King Property の最も有名な挨拶代わりの問題です。</b>"
+  },
+  {
+    id: "L1_02",
+    level: "1_基礎レベル",
+    key: "基本変換：分母分子の相殺（指数関数）",
+    latexQ: "\\[ \\int_0^1 \\frac{e^x}{e^x + e^{1-x}} \\,dx \\]",
+    latexA: "\\[ \\frac{1}{2} \\]",
+    note: "【着眼点】：区間 $[0, 1]$ と指数関数<br>【公式/方針】：$x = 1 - t$ と置換して元の式 $I$ と足す<br>【操作結果】：分子が $e^{1-x}$ に変わり、分母は $e^{1-x} + e^x$ で変わらない。<br>⇒ <b>足すと分子と分母が同じになり</b>、\\[ 2I = \\int_0^1 1 \\,dx = 1 \\]。よって \\[ I = 1/2 \\] となります。三角関数以外でも成立することを確認しましょう。"
+  },
+  {
+    id: "L1_03",
+    level: "1_基礎レベル",
+    key: "n乗への拡張（見た目倒し）",
+    latexQ: "\\[ \\int_0^{\\frac{\\pi}{2}} \\frac{\\sin^3 x}{\\sin^3 x + \\cos^3 x} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{4} \\]",
+    note: "【着眼点】：指数が3になっても構造は同じ<br>【公式/方針】：$x = \\frac{\\pi}{2}-t$<br>⇒ 実は指数が $3$ でも $n$ でも $\\sqrt{}$ でも、King Propertyを使えば全く同じプロセスで分母分子が一致して足して $1$ になります。答えは常に $\\pi/4$ です。"
+  },
+  {
+    id: "L1_04",
+    level: "1_基礎レベル",
+    key: "積分区間が0以外からのスタート",
+    latexQ: "\\[ \\int_{\\frac{\\pi}{6}}^{\\frac{\\pi}{3}} \\frac{\\sin x}{\\sin x + \\cos x} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{12} \\]",
+    note: "【着眼点】：区間 $[\\pi/6, \\pi/3]$<br>【公式/方針】：$x = \\frac{\\pi}{6} + \\frac{\\pi}{3} - t = \\frac{\\pi}{2} - t$ と置換<br>⇒ 置換式はいつも通り $x = \\pi/2 - t$ になります。足すと $2I = \\int_{\\pi/6}^{\\pi/3} 1 dx = \\pi/3 - \\pi/6 = \\pi/6$ となり、$I = \\pi/12$。"
+  },
+  {
+    id: "L1_05",
+    level: "1_基礎レベル",
+    key: "多項式のルートの相殺",
+    latexQ: "\\[ \\int_0^2 \\frac{\\sqrt{x}}{\\sqrt{x} + \\sqrt{2-x}} \\,dx \\]",
+    latexA: "\\[ 1 \\]",
+    note: "【着眼点】：ルートの中身が $x$ と $2-x$<br>【公式/方針】：$x = 2-t$ と置換<br>⇒ 三角関数以外でも基本原則は同じ。足すと分母分子が等しくなり、$2I = \\int_0^2 1 dx = 2$ より $I=1$。"
+  },
+
+  // --- Lv.2 入試基礎レベル ---
+  {
+    id: "L2_01",
+    level: "2_難関大入試基礎レベル",
+    key: "隠蔽された相殺型（tan の処理）",
+    latexQ: "\\[ \\int_0^{\\frac{\\pi}{2}} \\frac{1}{1 + \\tan x} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{4} \\]",
+    note: "【着眼点】：一見すると非対称だが、区間が $[0, \\pi/2]$ であること。<br>【公式/方針】：$\\tan x = \\frac{\\sin x}{\\cos x}$ と変形し、分母分子に $\\cos x$ をかける。<br>【操作結果】：\\[ \\int_0^{\\frac{\\pi}{2}} \\frac{\\cos x}{\\cos x + \\sin x} \\,dx \\] となる。<br>⇒ <b>これは Lv.1 と全く同じ形</b> です。したがって答えも同じ $\\pi/4$ になります。頻出の隠蔽パターンです。"
+  },
+  {
+    id: "L2_02",
+    level: "2_難関大入試基礎レベル",
+    key: "対数と三角関数の融合（足して0になる型）",
+    latexQ: "\\[ \\int_0^{\\frac{\\pi}{2}} \\log(\\tan x) \\,dx \\]",
+    latexA: "\\[ 0 \\]",
+    note: "【着眼点】：対数と $\\tan x$ の組み合わせ、区間 $[0, \\pi/2]$<br>【公式/方針】：$x = \\frac{\\pi}{2} - t$ と置換して元の式 $I$ と足す<br>【操作結果】：$\\tan x$ が逆数になり、\\[ \\log(1/\\tan x) = -\\log(\\tan x) \\] と符号が反転する。<br>⇒ <b>足すと中身が完全に相殺されて $0$ になります。</b> \\[ 2I = 0 \\implies I = 0 \\]。対数と対称性の相性の良さを端的に示す代表例です。"
+  },
+  {
+    id: "L2_03",
+    level: "2_難関大入試基礎レベル",
+    key: "対数の隠蔽（和が一定）",
+    latexQ: "\\[ \\int_1^3 \\frac{\\log x}{\\log x + \\log(4-x)} \\,dx \\]",
+    latexA: "\\[ 1 \\]",
+    note: "【着眼点】：対数の中身が $x$ と $4-x$<br>【公式/方針】：$x = 1+3-t = 4-t$ と置換<br>⇒ 見た目は仰々しいですが、置換して足すと分母分子が $\\log(4-x)+\\log x$ となり一致します。$2I = \\int_1^3 1 dx = 2$ より $I=1$。"
+  },
+  {
+    id: "L2_04",
+    level: "2_難関大入試基礎レベル",
+    key: "対称性によるゼロ証明",
+    latexQ: "\\[ \\int_0^\\pi \\cos^3 x \\,dx \\]",
+    latexA: "\\[ 0 \\]",
+    note: "【着眼点】：区間 $[0, \\pi]$ と $\\cos$ の奇数乗<br>【公式/方針】：$x = \\pi-t$ と置換<br>⇒ $\\cos(\\pi-t) = -\\cos t$。これを3乗するため、$-\\cos^3 t$ になります。元の式と足すと $2I = \\int_0^\\pi 0 dx = 0$。グラフの面積が相殺されることを式変形だけで証明する型です。"
+  },
+  {
+    id: "L2_05",
+    level: "2_難関大入試基礎レベル",
+    key: "三角関数と指数の融合",
+    latexQ: "\\[ \\int_{-\\frac{\\pi}{2}}^{\\frac{\\pi}{2}} \\frac{\\cos^2 x}{1+e^x} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{4} \\]",
+    note: "【着眼点】：分母の $1+e^x$ と対称区間 $[-\\pi/2, \\pi/2]$<br>【公式/方針】：$x = -\\pi/2 + \\pi/2 - t = -t$ と置換<br>⇒ $1+e^{-t} = \\frac{1+e^t}{e^t}$ より、分母分子に $e^t$ をかけると $\\frac{e^t \\cos^2 t}{e^t+1}$。元の式と足すと見事に分母が消え、$2I = \\int_{-\\pi/2}^{\\pi/2} \\cos^2 x dx$ という基本積分に帰着します。"
+  },
+
+  // --- Lv.3 国公立標準レベル ---
+  {
+    id: "L3_01",
+    level: "3_国公立大標準レベル",
+    key: "x の消去（基本）",
+    latexQ: "\\[ \\int_0^\\pi x \\sin x \\,dx \\]",
+    latexA: "\\[ \\pi \\]",
+    note: "【着眼点】：$x \\times (\\sin x$ のみで構成された式$)$ と区間 $[0, \\pi]$<br>【公式/方針】：$x = \\pi - t$ と置換して $x$ を消去（King Property）<br>【危険】：$2I$ の割り忘れ<br>⇒ $dx = -dt$。区間反転を戻し、$\\sin(\\pi-t) = \\sin t$ より、<br>\\[ I = \\int_0^\\pi (\\pi-t)\\sin t dt = \\pi \\int_0^\\pi \\sin t dt - I \\]<br>\\[ 2I = \\pi \\left[ -\\cos x \\right]_0^\\pi = 2\\pi \\implies I = \\pi \\]<br>邪魔な $x$ が消え、単純な三角関数の積分に帰着する爽快感を味わいましょう。"
+  },
+  {
+    id: "L3_02",
+    level: "3_国公立大標準レベル",
+    key: "x の消去（別の置換積分への接続）",
+    latexQ: "\\[ \\int_0^\\pi \\frac{x \\sin x}{1 + \\cos^2 x} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi^2}{4} \\]",
+    note: "【着眼点】：$x \\times ($偶関数的な三角関数$)$ と区間 $[0, \\pi]$<br>【公式/方針】：まず $x = \\pi - t$ と置換して $x$ を消去。<br>【操作結果】：$\\cos(\\pi-t) = -\\cos t$ だが、2乗されるため分母は不変。$\\sin$ は不変。<br>\\[ I = \\int_0^\\pi \\frac{(\\pi-t)\\sin t}{1+\\cos^2 t} dt = \\pi \\int_0^\\pi \\frac{\\sin t}{1+\\cos^2 t} dt - I \\]<br>\\[ 2I = \\pi \\int_0^\\pi \\frac{\\sin t}{1+\\cos^2 t} dt \\]<br>ここから $\\cos t = u$ と置換積分して $\\arctan$ 型に持ち込みます。"
+  },
+  {
+    id: "L3_03",
+    level: "3_国公立大標準レベル",
+    key: "xの消去（cosの偶数乗）",
+    latexQ: "\\[ \\int_0^\\pi x \\cos^2 x \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi^2}{4} \\]",
+    note: "【着眼点】：$x \\times \\cos^2 x$ と区間 $[0, \\pi]$<br>【公式/方針】：$x = \\pi-t$ と置換<br>⇒ $\\cos(\\pi-t)=-\\cos t$ ですが2乗で吸収され、$x$ が消去されます。$2I = \\pi \\int_0^\\pi \\cos^2 x dx$ となり、あとは半角の公式で処理するだけです。"
+  },
+  {
+    id: "L3_04",
+    level: "3_国公立大標準レベル",
+    key: "xの消去（sinの奇数乗）",
+    latexQ: "\\[ \\int_0^\\pi x \\sin^3 x \\,dx \\]",
+    latexA: "\\[ \\frac{2}{3}\\pi \\]",
+    note: "【着眼点】：$x \\times \\sin^3 x$<br>【公式/方針】：$x = \\pi-t$ 置換後、$\\sin^3 x = \\sin x(1-\\cos^2 x)$ と変形<br>⇒ $x$ を消したのち、$2I = \\pi \\int_0^\\pi \\sin^3 x dx$。これを計算するために $u = \\cos x$ とさらに置換積分します。"
+  },
+  {
+    id: "L3_05",
+    level: "3_国公立大標準レベル",
+    key: "xの消去（3つの積）",
+    latexQ: "\\[ \\int_0^\\pi x \\sin x \\cos^2 x \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{3} \\]",
+    note: "【着眼点】：$\\sin x \\cos^2 x$ は $x \\to \\pi-x$ で不変<br>【公式/方針】：$x = \\pi-t$ と置換<br>⇒ $2I = \\pi \\int_0^\\pi \\sin x \\cos^2 x dx$。そのまま $u = \\cos x$ または $-\\frac{1}{3}\\cos^3 x$ の微分の逆算で処理します。"
+  },
+
+  // --- Lv.4 難関大標準レベル ---
+  {
+    id: "L4_01",
+    level: "4_難関大標準レベル",
+    key: "King Property ＋ 加法定理の融合",
+    latexQ: "\\[ \\int_0^{\\frac{\\pi}{4}} \\log(1+\\tan x) \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{8} \\log 2 \\]",
+    note: "【着眼点】：区間 $[0, \\pi/4]$ と $\\log(1+\\tan x)$<br>【公式/方針】：$x = \\frac{\\pi}{4}-t$ 置換と $\\tan$ の加法定理<br>【危険】：加法定理の展開と通分ミス<br>⇒ \\[ 1+\\tan\\left(\\frac{\\pi}{4}-t\\right) = 1 + \\frac{1-\\tan t}{1+\\tan t} = \\frac{2}{1+\\tan t} \\] より、<br>\\[ I = \\int_0^{\\pi/4} (\\log 2 - \\log(1+\\tan t)) dt = \\frac{\\pi}{4}\\log 2 - I \\]<br>\\[ 2I = \\frac{\\pi}{4}\\log 2 \\implies I = \\frac{\\pi}{8}\\log 2 \\]"
+  },
+  {
+    id: "L4_02",
+    level: "4_難関大標準レベル",
+    key: "大掛かりな下準備（tanθ置換からの帰着）",
+    latexQ: "\\[ \\int_0^1 \\frac{\\log(x+1)}{x^2+1} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{8} \\log 2 \\]",
+    note: "【着眼点】：分母の $x^2+1$ と積分区間 $[0, 1]$<br>【公式/方針】：まず $x = \\tan \\theta$ と置換する。<br>【操作結果】：区間は $0 \\to \\pi/4$ になり、見事に Lv.4_01 と全く同じ式 \\[ I = \\int_0^{\\pi/4} \\log(1+\\tan \\theta) d\\theta \\] に帰着します。見事な伏線回収です。"
+  },
+  {
+    id: "L4_03",
+    level: "4_難関大標準レベル",
+    key: "xの消去と複雑な置換積分",
+    latexQ: "\\[ \\int_0^\\pi \\frac{x \\sin^3 x}{1+\\cos^2 x} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{2} (\\pi - 2) \\]",
+    note: "【着眼点】：分子の $\\sin^3 x$ の処理<br>【公式/方針】：$x=\\pi-t$ で $x$ を消し、$2I = \\pi \\int_0^\\pi \\frac{\\sin^3 x}{1+\\cos^2 x} dx$。分子を $\\sin x (1-\\cos^2 x)$ にして $\\cos x = u$ 置換。<br>⇒ $\\int_{-1}^1 \\frac{1-u^2}{1+u^2} du = \\int_{-1}^1 \\left(-1 + \\frac{2}{1+u^2}\\right) du$ となり、$\\arctan$ が再登場する名作です。"
+  },
+  {
+    id: "L4_04",
+    level: "4_難関大標準レベル",
+    key: "乗法的なKing Property（反転）",
+    latexQ: "\\[ \\int_0^\\infty \\frac{\\log x}{1+x^2} \\,dx \\]",
+    latexA: "\\[ 0 \\]",
+    note: "【着眼点】：区間 $[0, \\infty]$ と $1+x^2$<br>【公式/方針】：$x = \\frac{1}{t}$ と置換（乗法的な対称性）<br>⇒ $dx = -1/t^2 dt$。区間は $\\infty \\to 0$ に反転。置換すると $I = \\int_\\infty^0 \\frac{-\\log t}{1+1/t^2} (-1/t^2) dt = -\\int_0^\\infty \\frac{\\log t}{t^2+1} dt = -I$。よって $2I=0$ より $I=0$。加法的な $x \\to a-x$ の親戚です。"
+  },
+  {
+    id: "L4_05",
+    level: "4_難関大標準レベル",
+    key: "指数と多項式の対称性",
+    latexQ: "\\[ \\int_{-1}^1 \\frac{1}{(1+2^x)(1+x^2)} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{4} \\]",
+    note: "【着眼点】：分母の $1+2^x$ と対称区間 $[-1, 1]$<br>【公式/方針】：$x = -t$ と置換<br>⇒ 分母分子に $2^t$ をかけると、元の式と足し合わせたときに $1+2^x$ が見事に約分されて消え、$2I = \\int_{-1}^1 \\frac{1}{1+x^2} dx$ だけが残ります。"
+  },
+
+  // --- Lv.5 超絶技巧レベル ---
+  {
+    id: "L5_01",
+    level: "5_超絶技巧レベル",
+    key: "オイラーの対数正弦積分",
+    latexQ: "\\[ \\int_0^{\\frac{\\pi}{2}} \\log(\\sin x) \\,dx \\]",
+    latexA: "\\[ -\\frac{\\pi}{2} \\log 2 \\]",
+    note: "【着眼点】：対数と三角関数の極限的融合<br>【公式/方針】：$x=\\pi/2-t$ の対称変形と2倍角の公式<br>【危険】：置換後の変数統一と区間処理のミス<br>⇒ King Property より $I = \\int_0^{\\pi/2} \\log(\\cos x) dx$。足して2倍角を作り $\\int_0^{\\pi/2} \\log(\\sin 2x) dx - \\frac{\\pi}{2}\\log 2$。前半の積分を $2x=u$ 置換と周期性で $I$ に戻し、$2I = I - \\frac{\\pi}{2}\\log 2$。"
+  },
+  {
+    id: "L5_02",
+    level: "5_超絶技巧レベル",
+    key: "分母分子の強烈な相殺極致",
+    latexQ: "\\[ \\int_0^{\\frac{\\pi}{2}} \\frac{\\sqrt{\\sin x}}{\\sqrt{\\sin x}+\\sqrt{\\cos x}} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{4} \\]",
+    note: "【着眼点】：分母分子の強烈な対称性と区間 $[0, \\pi/2]$<br>【公式/方針】：$x = \\frac{\\pi}{2}-t$ と置換（King Property）<br>⇒ ルートがついていても相殺できることを示す極致。Lv.1_01 の応用ですが、見た目の威圧感は抜群です。"
+  },
+  {
+    id: "L5_03",
+    level: "5_超絶技巧レベル",
+    key: "対数正弦積分の応用（部分積分）",
+    latexQ: "\\[ \\int_0^{\\frac{\\pi}{2}} \\frac{x}{\\tan x} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{2} \\log 2 \\]",
+    note: "【着眼点】：$x$ と $\\tan x$ の商<br>【公式/方針】：部分積分を行ってから、Lv.5_01（対数正弦積分）の結果を利用する<br>⇒ $x (\\log(\\sin x))'$ と見て部分積分すると、$[x \\log(\\sin x)]_0^{\\pi/2} - \\int_0^{\\pi/2} \\log(\\sin x) dx$。第1項は極限で $0$ になり、第2項に $-\\frac{\\pi}{2}\\log 2$ を代入して符号が反転します。"
+  },
+  {
+    id: "L5_04",
+    level: "5_超絶技巧レベル",
+    key: "変形してから対数正弦積分へ",
+    latexQ: "\\[ \\int_0^\\pi \\log(1-\\cos x) \\,dx \\]",
+    latexA: "\\[ -\\pi \\log 2 \\]",
+    note: "【着眼点】：対数の中に $1-\\cos x$<br>【公式/方針】：$x=\\pi-t$ で置換して足し、Lv.5_01 の対数正弦積分に帰着させる<br>⇒ 置換して足すと $2I = \\int_0^\\pi \\log(1-\\cos^2 x) dx = 2 \\int_0^\\pi \\log(\\sin x) dx$。対称性から $4 \\int_0^{\\pi/2} \\log(\\sin x) dx$ となり、$-\\frac{\\pi}{2}\\log 2$ を代入して計算します。"
+  },
+  {
+    id: "L5_05",
+    level: "5_超絶技巧レベル",
+    key: "究極の「見た目倒し」",
+    latexQ: "\\[ \\int_0^{\\frac{\\pi}{2}} \\frac{1}{1+(\\tan x)^{\\sqrt{2}}} \\,dx \\]",
+    latexA: "\\[ \\frac{\\pi}{4} \\]",
+    note: "【着眼点】：指数の $\\sqrt{2}$ という異物感<br>【公式/方針】：$x = \\frac{\\pi}{2}-t$ 置換<br>⇒ 指数が無理数であろうと複素数であろうと、$1/(1+\\cot^p x) = \\tan^p x / (1+\\tan^p x)$ となり、元の式と足せば分母分子が完全に一致して $1$ になります。King Propertyを知る者だけが笑える問題です。"
+  }
+];
+
+// ランダムシャッフル用ヘルパー
+const shuffleArray = (arr) => [...arr].sort(() => Math.random() - 0.5);
+
+// 各問題のカードコンポーネント
+const ProblemCard = ({ problem, index }) => {
+  const [showKey, setShowKey] = useState(false);
+  const [showAnswer, setShowAnswer] = useState(false);
+
+  useEffect(() => {
+    if ((showKey || showAnswer) && window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
+  }, [showKey, showAnswer]);
+
+  const getBadgeColor = (level) => {
+    if (level.includes('1')) return 'bg-cyan-100 text-cyan-700';
+    if (level.includes('2')) return 'bg-green-100 text-green-700';
+    if (level.includes('3')) return 'bg-yellow-100 text-yellow-700';
+    if (level.includes('4')) return 'bg-orange-100 text-orange-700';
+    if (level.includes('5')) return 'bg-red-100 text-red-700';
+    return 'bg-blue-100 text-blue-700';
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8 transition-shadow hover:shadow-md">
+      <div className="bg-slate-50 px-6 py-4 border-b border-gray-200">
+        <div className="flex flex-wrap justify-between items-center gap-2">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold text-slate-500">Q{index + 1}.</span>
+            <span className={`text-xs font-bold px-3 py-1 rounded-full ${getBadgeColor(problem.level)}`}>
+              {problem.id}
+            </span>
+          </div>
+          <span className="text-xs font-medium text-slate-500 bg-slate-200 px-3 py-1 rounded-md">
+            {problem.level}
+          </span>
+        </div>
+        
+        <div 
+          onClick={() => setShowKey(!showKey)}
+          className={`mt-4 inline-block cursor-pointer rounded-lg px-4 py-2 transition-colors ${
+            showKey ? 'bg-indigo-50 border border-indigo-100' : 'bg-slate-200 hover:bg-slate-300'
+          }`}
+        >
+          {showKey ? (
+            <h3 className="text-lg font-bold text-indigo-900 m-0">{problem.key}</h3>
+          ) : (
+            <span className="text-sm font-semibold text-slate-600 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+              タップしてテーマ（着眼点）を表示
+            </span>
+          )}
+        </div>
+      </div>
+      
+      <div className="px-6 py-8 flex justify-center overflow-x-auto min-h-[120px] items-center">
+        <div dangerouslySetInnerHTML={{ __html: problem.latexQ }} className="text-xl md:text-2xl" />
+      </div>
+
+      <div className="px-6 py-4 bg-slate-50 flex justify-center border-t border-gray-100">
+        <button 
+          onClick={() => setShowAnswer(!showAnswer)}
+          className={`font-semibold py-2.5 px-8 rounded-xl transition-all duration-200 ${
+            showAnswer 
+              ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' 
+              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow'
+          }`}
+        >
+          {showAnswer ? "解答・解説を閉じる" : "解答・解説（Note）を見る"}
+        </button>
+      </div>
+
+      {showAnswer && (
+        <div className="px-6 py-6 border-t border-gray-200 bg-white animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="mb-8 flex flex-col items-center overflow-x-auto">
+            <span className="text-xs font-bold tracking-widest text-indigo-400 mb-3 uppercase">Answer</span>
+            <div dangerouslySetInnerHTML={{ __html: problem.latexA }} className="text-2xl text-indigo-900 font-bold" />
+          </div>
+          
+          <div className="bg-amber-50/50 rounded-xl p-6 border border-amber-100">
+            <span className="text-xs font-bold tracking-widest text-amber-600 mb-3 block uppercase">Explanation Note</span>
+            <div 
+              className="text-slate-700 leading-relaxed text-sm md:text-base space-y-2"
+              dangerouslySetInnerHTML={{ __html: problem.note }} 
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default function App() {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [displayProblems, setDisplayProblems] = useState(allProblems);
+  const [mode, setMode] = useState('all'); 
+  const [selectedLevel, setSelectedLevel] = useState(2);
+  const [quizSession, setQuizSession] = useState(0); 
+  const [showTopButton, setShowTopButton] = useState(false); // トップへ戻るボタンの表示状態
+
+  useEffect(() => {
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+      },
+      startup: { typeset: false }
+    };
+    
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+    script.async = true;
+    script.onload = () => {
+      window.MathJax.typesetPromise().then(() => setIsLoaded(true));
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(script);
+      delete window.MathJax;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded && window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
+  }, [displayProblems, isLoaded]);
+
+  // スクロール検知
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowTopButton(true);
+      } else {
+        setShowTopButton(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToLevel = (level) => {
+    const element = document.getElementById(`level-heading-${level}`);
+    if (element) {
+      // 見出しがヘッダーなどに隠れないよう少し上にオフセット
+      const y = element.getBoundingClientRect().top + window.scrollY - 20;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
+
+  const generateRandomQuiz = () => {
+    const L = parseInt(selectedLevel);
+    const pools = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+    allProblems.forEach(p => {
+      const match = p.level.match(/^(\d)/);
+      if (match) pools[match[1]].push(p);
+    });
+
+    const result = [];
+    if (L > 1) {
+      const lowerPool = shuffleArray(pools[L - 1]);
+      if (lowerPool.length > 0) result.push(lowerPool[0]);
+    }
+    if (L < 5) {
+      const upperPool = shuffleArray(pools[L + 1]);
+      if (upperPool.length > 0) result.push(upperPool[0]);
+    }
+    const neededBase = 5 - result.length;
+    const basePool = shuffleArray(pools[L]);
+    result.push(...basePool.slice(0, neededBase));
+
+    if (result.length < 5) {
+      const remaining = shuffleArray(allProblems.filter(p => !result.includes(p)));
+      result.push(...remaining.slice(0, 5 - result.length));
+    }
+
+    setDisplayProblems(shuffleArray(result));
+    setQuizSession(prev => prev + 1);
+    setMode('random');
+  };
+
+  const showAllProblems = () => {
+    setDisplayProblems(allProblems);
+    setQuizSession(prev => prev + 1);
+    setMode('all');
+  };
+
+  const showLevelProblems = () => {
+    const filtered = allProblems.filter(p => p.level.startsWith(String(selectedLevel)));
+    setDisplayProblems(filtered);
+    setQuizSession(prev => prev + 1);
+    setMode('level');
+  };
+
+  // 問題一覧のレンダリング（全問モード時はレベルごとにグループ化）
+  const renderProblems = () => {
+    if (mode === 'all') {
+      const levels = [1, 2, 3, 4, 5];
+      return levels.map(lv => {
+        const probs = displayProblems.filter(p => p.level.startsWith(String(lv)));
+        if (probs.length === 0) return null;
+        
+        return (
+          <div key={`level-group-${lv}`} id={`level-heading-${lv}`} className="mb-12 scroll-mt-6">
+            <div className="flex justify-between items-center mb-6 border-b-2 border-indigo-200 pb-2 px-2">
+              <h2 className="text-2xl font-bold text-slate-800">
+                Lv.{lv} の問題
+              </h2>
+              <button 
+                onClick={scrollToTop} 
+                className="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                トップへ戻る
+              </button>
+            </div>
+            {probs.map((prob) => {
+              const globalIdx = displayProblems.indexOf(prob);
+              return <ProblemCard key={`${quizSession}-${prob.id}`} problem={prob} index={globalIdx} />;
+            })}
+          </div>
+        );
+      });
+    } else {
+      return displayProblems.map((prob, idx) => (
+        <ProblemCard key={`${quizSession}-${prob.id}`} problem={prob} index={idx} />
+      ));
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 py-10 px-4 sm:px-6 lg:px-8 font-sans selection:bg-indigo-100 selection:text-indigo-900 relative">
+      <div className="max-w-3xl mx-auto">
+        <header className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-3 tracking-tight">
+            積分は王様の嗜み：基礎からの Kings Property 【{allProblems.length}題】
+          </h1>
+          <p className="text-slate-500 font-medium">
+            定積分の難問を瞬殺する対称性「$x \to a+b-x$ 置換」をマスターしよう
+          </p>
+        </header>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <label className="font-bold text-slate-700">目標レベル:</label>
+              <select 
+                value={selectedLevel}
+                onChange={(e) => setSelectedLevel(Number(e.target.value))}
+                className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5 font-medium"
+              >
+                <option value={1}>Lv.1 基礎・公式確認</option>
+                <option value={2}>Lv.2 入試基礎レベル</option>
+                <option value={3}>Lv.3 国公立標準レベル</option>
+                <option value={4}>Lv.4 難関大標準レベル</option>
+                <option value={5}>Lv.5 超絶技巧レベル</option>
+              </select>
+            </div>
+            
+            <div className="flex gap-2 w-full md:w-auto flex-wrap">
+              <button 
+                onClick={showLevelProblems}
+                className={`flex-1 md:flex-none font-bold py-2.5 px-6 rounded-xl transition-colors ${
+                  mode === 'level' 
+                    ? 'bg-indigo-600 text-white shadow-sm' 
+                    : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                }`}
+              >
+                レベル別一覧
+              </button>
+              <button 
+                onClick={generateRandomQuiz}
+                className={`flex-1 md:flex-none font-bold py-2.5 px-6 rounded-xl transition-colors ${
+                  mode === 'random' 
+                    ? 'bg-teal-600 text-white shadow-sm' 
+                    : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                }`}
+              >
+                ランダム5題
+              </button>
+              <button 
+                onClick={showAllProblems}
+                className={`flex-1 md:flex-none font-bold py-2.5 px-6 rounded-xl transition-colors ${
+                  mode === 'all' 
+                    ? 'bg-slate-800 text-white shadow-sm' 
+                    : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                }`}
+              >
+                全問一覧
+              </button>
+            </div>
+          </div>
+          
+          {/* モード説明とジャンプナビゲーション */}
+          {mode === 'random' && (
+            <p className="mt-4 text-sm text-teal-700 font-medium text-center md:text-left bg-teal-50 p-3 rounded-lg border border-teal-100">
+              🎯 【ランダム出題】Lv.{selectedLevel}を中心に、上下のレベルから1題ずつ交えて5題出題中！
+            </p>
+          )}
+          {mode === 'level' && (
+            <p className="mt-4 text-sm text-indigo-700 font-medium text-center md:text-left bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+              📚 【レベル別一覧】Lv.{selectedLevel} の問題をすべて表示しています。
+            </p>
+          )}
+          {mode === 'all' && (
+            <div className="mt-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <p className="text-sm text-slate-700 font-bold mb-3 flex items-center justify-center md:justify-start gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                各レベルへジャンプ
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                {[1, 2, 3, 4, 5].map(lv => {
+                  // そのレベルの問題が存在するかチェック
+                  const hasProbs = allProblems.some(p => p.level.startsWith(String(lv)));
+                  if (!hasProbs) return null;
+                  return (
+                    <button
+                      key={`jump-${lv}`}
+                      onClick={() => scrollToLevel(lv)}
+                      className="px-4 py-2 bg-white border border-indigo-200 text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-50 hover:border-indigo-300 transition-colors shadow-sm"
+                    >
+                      Lv.{lv}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {!isLoaded ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <span className="ml-3 text-slate-500 font-medium">数式エンジンを準備中...</span>
+          </div>
+        ) : (
+          <main key={`session-${quizSession}`}>
+            {renderProblems()}
+          </main>
+        )}
+
+        <footer className="mt-12 mb-8 text-center text-slate-400 text-sm">
+          <p>高校数学 積分法アプローチ演習</p>
+        </footer>
+      </div>
+
+      {/* 画面右下のフローティング「トップへ戻る」ボタン */}
+      {showTopButton && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 md:bottom-10 md:right-10 bg-slate-800 text-white p-4 rounded-full shadow-lg hover:bg-slate-700 transition-all duration-300 z-50 hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-slate-300"
+          aria-label="トップへ戻る"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
